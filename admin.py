@@ -1,7 +1,4 @@
-from database import get_db_connection
-
-def admin_login(username, password):
-    conn = get_db_connection()
+def admin_login(conn, username, password):
     cursor = conn.cursor()
     cursor.execute("SELECT password FROM admin WHERE username = %s", (username,))
     stored_password = cursor.fetchone()
