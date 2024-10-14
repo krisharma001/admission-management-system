@@ -1,11 +1,5 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-import mysql.connector
-from mysql.connector import Error
-import admin
-import course
-import student
-import report
 from database import get_db_connection
 
 class AdmissionManagementSystem:
@@ -25,19 +19,13 @@ class AdmissionManagementSystem:
         self.create_report_tab()
 
     def get_connection(self):
-        """Establish a database connection only when needed."""
         if self.conn is None or not self.conn.is_connected():
-            try:
-                # Try to get the connection when needed, not during initialization
-                self.conn = get_db_connection()  # get_db_connection should pull credentials from .env
-                if self.conn.is_connected():
-                    print("Successfully connected to the database")
-            except Error as e:
-                print(f"Error connecting to the database: {e}")
-                messagebox.showerror("Database Connection Error", f"Failed to connect to the database: {e}")
-                return None
+            self.conn = get_db_connection()
+            if self.conn is None:
+                messagebox.showerror("Database Connection Error", "Failed to connect to the database.")
+            else:
+                print("Successfully connected to the database")
         return self.conn
-
 
     def create_admin_tab(self):
         admin_frame = ttk.Frame(self.notebook)
@@ -121,6 +109,7 @@ class AdmissionManagementSystem:
     def admin_login(self):
         conn = self.get_connection()
         if conn:
+            import admin
             username = self.admin_username.get()
             password = self.admin_password.get()
             if admin.admin_login(conn, username, password):
@@ -131,6 +120,7 @@ class AdmissionManagementSystem:
     def add_course(self):
         conn = self.get_connection()
         if conn:
+            import course
             name = self.course_name.get()
             dept = self.department.get()
             dur = self.duration.get()
@@ -141,6 +131,7 @@ class AdmissionManagementSystem:
     def add_student(self):
         conn = self.get_connection()
         if conn:
+            import student
             student.add_student(
                 conn,
                 self.first_name.get(),
@@ -156,6 +147,7 @@ class AdmissionManagementSystem:
     def generate_report(self):
         conn = self.get_connection()
         if conn:
+            import report
             report_data = report.generate_admission_report(conn)
             self.report_text.delete('1.0', tk.END)
             for row in report_data:
