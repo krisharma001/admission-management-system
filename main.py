@@ -1,6 +1,15 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from database import get_db_connection
+import os
+import hashlib
+from dotenv import load_dotenv
+from admin import get_admin_credentials, hash_password, admin_login
+import course
+import student
+import report
+
+load_dotenv()
 
 class AdmissionManagementSystem:
     def __init__(self, master):
@@ -9,6 +18,7 @@ class AdmissionManagementSystem:
         self.master.geometry("800x600")
 
         self.conn = None
+        self.is_admin_logged_in = False
 
         self.notebook = ttk.Notebook(self.master)
         self.notebook.pack(expand=True, fill="both")
@@ -17,6 +27,9 @@ class AdmissionManagementSystem:
         self.create_course_tab()
         self.create_student_tab()
         self.create_report_tab()
+
+        # Disable other tabs initially
+        self.disable_tabs()
 
     def get_connection(self):
         if self.conn is None or not self.conn.is_connected():
@@ -40,6 +53,14 @@ class AdmissionManagementSystem:
         self.admin_password.grid(row=1, column=1, padx=10, pady=10)
 
         ttk.Button(admin_frame, text="Login", command=self.admin_login).grid(row=2, column=0, columnspan=2, pady=20)
+
+    def disable_tabs(self):
+        for i in range(1, self.notebook.index('end')):
+            self.notebook.tab(i, state='disabled')
+
+    def enable_tabs(self):
+        for i in range(1, self.notebook.index('end')):
+            self.notebook.tab(i, state='normal')
 
     def create_course_tab(self):
         course_frame = ttk.Frame(self.notebook)
@@ -107,20 +128,23 @@ class AdmissionManagementSystem:
         self.report_text.pack(pady=10)
 
     def admin_login(self):
-        conn = self.get_connection()
-        if conn:
-            import admin
-            username = self.admin_username.get()
-            password = self.admin_password.get()
-            if admin.admin_login(conn, username, password):
-                messagebox.showinfo("Success", "Admin login successful!")
-            else:
-                messagebox.showerror("Error", "Invalid credentials")
-
+        username = self.admin_username.get()
+        password = self.admin_password.get()
+        
+        if admin_login(username, password):
+            messagebox.showinfo("Success", "Admin login successful!")
+            self.is_admin_logged_in = True
+            self.enable_tabs()
+        else:
+            messagebox.showerror("Error", "Invalid admin credentials")
+        
     def add_course(self):
+        if not self.is_admin_logged_in:
+            messagebox.showerror("Error", "Please login as admin first")
+            return
+
         conn = self.get_connection()
         if conn:
-            import course
             name = self.course_name.get()
             dept = self.department.get()
             dur = self.duration.get()
@@ -129,9 +153,12 @@ class AdmissionManagementSystem:
             messagebox.showinfo("Success", "Course added successfully!")
 
     def add_student(self):
+        if not self.is_admin_logged_in:
+            messagebox.showerror("Error", "Please login as admin first")
+            return
+
         conn = self.get_connection()
         if conn:
-            import student
             student.add_student(
                 conn,
                 self.first_name.get(),
@@ -145,13 +172,19 @@ class AdmissionManagementSystem:
             messagebox.showinfo("Success", "Student added successfully!")
 
     def generate_report(self):
+        if not self.is_admin_logged_in:
+            messagebox.showerror("Error", "Please login as admin first")
+            return
+
         conn = self.get_connection()
         if conn:
-            import report
             report_data = report.generate_admission_report(conn)
             self.report_text.delete('1.0', tk.END)
-            for row in report_data:
-                self.report_text.insert(tk.END, f"{row}\n")
+            if report_data:
+                for row in report_data:
+                    self.report_text.insert(tk.END, f"{row}\n")
+            else:
+                self.report_text.insert(tk.END, "No data available for the report.")
 
 if __name__ == "__main__":
     root = tk.Tk()
